@@ -1,0 +1,40 @@
+{
+    "name": "technikh/sculpin-fb-bundle",
+    "description": "Fetch contentful content and dump the markdowns as posts for sculpin",
+    "keywords": ["sculpin", "twig", "contentful", "markdown"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Airton Zanon",
+            "email": "me@airton.dev",
+            "homepage": "https://airton.dev"
+        }
+    ],
+
+    "suggest": {
+        "sculpin/sculpin": "@stable"
+    },
+    "require": {
+        "php": "^7.4|^8.0",
+        "ext-iconv": "*",
+        "contentful/contentful": "^6.1.0",
+        "symfony/console": "^3.4.29 || ^4.1.19 || ^5.0"
+    },
+    "require-dev": {
+        "malukenho/mcbumpface": "^1.1.5",
+        "phpunit/phpunit": "^9.5.4",
+        "infection/infection": "^0.25.0",
+        "vimeo/psalm": "^4.7.3"
+    },
+    "extra": {
+        "symfony": {
+            "allow-contrib": "true"
+        }
+    },
+    "autoload": {
+        "psr-4": { "TechNikh\\SculpinFacebookBundle\\": "src" }
+    },
+    "autoload-dev": {
+        "psr-4": { "TechNikh\\SculpinFacebookBundle\\Tests\\": "tests" }
+    }
+}
