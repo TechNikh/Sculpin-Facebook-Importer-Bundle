@@ -36,7 +36,7 @@ $ export contentful_token=<token>
 $ export contentful_space_id=<space_id>
 
 # Sculpin command
-$ vendor/bin/sculpin contentful:fetch
+$ vendor/bin/sculpin facebook:fetch
 Created file: source/_til/2021-04-05-first-post.md
 Created file: source/_til/2020-12-05-second-post.md
 Created file: source/_til/2020-11-23-third-post.md
@@ -46,6 +46,8 @@ Created file: source/_til/2020-11-23-third-post.md
 * The name of the content type is the name that we create the folder inside source;
 * The fields `language, title, date and contentMarkdown` must exist;
 
+./vendor/bin/psalm
+./vendor/bin/psalm --alter --issues=MissingReturnType,MissingParamType --dry-run
 
 > We are still going to add the settings to the user to use their specific fields on this bundle 
 

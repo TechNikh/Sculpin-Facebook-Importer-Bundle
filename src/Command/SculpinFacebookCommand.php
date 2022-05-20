@@ -4,38 +4,38 @@ declare(strict_types=1);
 
 namespace TechNikh\SculpinFacebookBundle\Command;
 
-use Contentful\Delivery\Client;
+//use Contentful\Delivery\Client;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 
-final class SculpinContentfulCommand extends Command
+final class SculpinFacebookCommand extends Command
 {
     public const SUCCESS = 0;
     public const FAILURE = 1;
 
-    private Client\ClientInterface $contetful;
+    //private Client\ClientInterface $contetful;
     private \Facebook\Facebook $fb;
 
     protected function configure()
     {
-        $contentfulSpaceId = getenv('contentful_space_id');
-        $contentfulToken = getenv('contentful_token');
-
+        $app_id = getenv('app_id');
+        $app_secret = getenv('app_secret');
+        $default_access_token = getenv('default_access_token');
 
 
         $this
-            ->setName('contentful:fetch')
+            ->setName('facebook:fetch')
             ->setDescription('Fetch Contentful data.')
             ->setHelp("The <info>contentful:fetch</info> command fetches contentful data and create files locally.");
         //->setContentfulClient(new Client($contentfulToken, $contentfulSpaceId));
         $fb = new \Facebook\Facebook([
-            'app_id' => '660043065158194',
-            'app_secret' => '3a20ecd582655136c2c762d1d013a3bc',
+            'app_id' => $app_id,
+            'app_secret' => $app_secret,
             'default_graph_version' => 'v12.0',
-            'default_access_token' => 'EAAJYTkBvajIBAKmdnDSXOPaXaZCQ2q01bG1TSirH82ZBaZCXUOXrhZAb3ZA8qpeKIbOwhP8aFNcAI7iaNfeYD5WHRIcoSPH0VKiTLGUaZB0OpTK6TCg5ljggGVtKI7bXp6NGO3MCGrcMRvgBzDoovQCxPs1xA153xUzypZBHNKcDkzC6B4rcMFYFbI92iGUJXyVKsIvApILoQZDZD', // optional
+            'default_access_token' => $default_access_token, // optional
         ]);
         $this->fb = $fb;
 
@@ -59,6 +59,56 @@ final class SculpinContentfulCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        // Albums
+        $response = $this->fb->get('/me/albums?fields=id,name&limit=15');
+        $feedEdge = $response->getGraphEdge();
+
+        foreach ($feedEdge as $status) {
+            $dataArr = $status->asArray();
+            //var_dump($dataArr);
+            $album_name = $dataArr['name'];
+            print $dataArr['id'] . "\r\n";
+            print $album_name . "\r\n";
+            if (strpos($album_name, '@') !== false) {
+                $response1 = $this->fb->get("/{$dataArr['id']}?fields=id,picture,photos{id,name,images,created_time},description,type,name&limit=15");
+                $feedEdge1 = $response1->getGraphNode();
+                $attachments = $feedEdge1->getField('photos');
+                //var_dump($attachments);
+                foreach ($attachments as $attachment) {
+                    $getMetaData = $attachment->asArray();
+                    //var_dump($getMetaData);
+                    $subattachments = $getMetaData['images'];
+                    $created_time = $getMetaData['created_time'];
+                    $media_id = $getMetaData['id'];
+                    //var_dump($subattachments);
+                    if (!empty($subattachments)) {
+                        foreach ($subattachments as $subattachment) {
+                            $photo_url = $subattachment['source'];
+                            var_dump($photo_url);
+                            $filesystem = new Filesystem();
+                            $date = $created_time;
+                            $filePath = $this->createImagePath($contentType = 'photos', $date, $media_id);
+
+                            $filesystem->dumpFile(
+                                $filePath,
+                                $this->createImageContent($photo_url, $date, $title = '', $body = '', $album_name, $media_id)
+                            );
+
+                            $output->writeln("Created file: " . $filePath);
+                            break; // we don't need different image sizes
+                        }
+                    }
+                    //break;
+                }
+                //break;
+            }
+        }
+
+        return self::SUCCESS;
+    }
+
+    protected function executeFeedPosts(InputInterface $input, OutputInterface $output)
+    {
         // Requires the "read_stream" permission
         $response = $this->fb->get('/me/feed?fields=id,message&limit=5');
         // Page 1
@@ -78,6 +128,7 @@ final class SculpinContentfulCommand extends Command
             //exit;
             if ($attachments != NULL) {
                 $getMetaData = $attachments->asArray();
+                $title = $getMetaData[0]['title']; // Photos from People’s Progress Trust's post
                 $media_type = $getMetaData[0]['media_type'];
                 if ($media_type == "album") {
                     //var_dump($getMetaData[0]);
@@ -114,7 +165,7 @@ final class SculpinContentfulCommand extends Command
             }*/
         }
         return self::SUCCESS;
-        $entries = $this->contetful->getEntries()->getItems();
+        /*$entries = $this->contetful->getEntries()->getItems();
 
         foreach ($entries as $entry) {
             $filesystem = new Filesystem();
@@ -130,7 +181,7 @@ final class SculpinContentfulCommand extends Command
             $output->writeln("Created file: " . $filePath);
         }
 
-        return self::SUCCESS;
+        return self::SUCCESS;*/
     }
 
     private function createPath(string $type, \DateTime $date, string $title): string
@@ -143,14 +194,16 @@ final class SculpinContentfulCommand extends Command
         return "source/_" . $type . "/" . $date->format('Y-m-d') . "-" . $this->normalizeTitle($title) . '.md';
     }
 
-    private function createImageContent(string $photo_url, \DateTime $date, string $title, string $body): string
+    private function createImageContent(string $photo_url, \DateTime $date, string $title, string $body, string $album_name = "", string $media_id = ""): string
     {
         return <<<EOL
 ---
 createdAt: {$date->format('Y-m-d')}
 title: {$title}
 alt: {$title}
+id: {$media_id}
 photo_url: {$photo_url}
+category: {$album_name}
 ---
 
 {$body}
@@ -183,10 +236,10 @@ EOL;
         return $cleanTitle;
     }
 
-    public function setContentfulClient(Client\ClientInterface $client): self
+    /*public function setContentfulClient(Client\ClientInterface $client): self
     {
         $this->contetful = $client;
 
         return $this;
-    }
+    }*/
 }
